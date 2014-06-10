@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 
 
@@ -30,47 +29,48 @@ def managed(name, env=None, packages=None, requirements=None, conda=None, pip=No
     ans = {}
     ans['name'] = name
     ans['changes'] = {}
-    ans['comment'] = ''
-    comments = []
+    ans['comment'] = []
     ans['result'] = True
 
     if conda is None:
         # Assume `conda` is on the PATH
         conda = 'conda'
 
+    # Create environment
     if env != None:
         if '/' in env:
-            # env is a path
+            # env is a path e.g. /home/ubuntu/envs/base
             cmd = [conda, 'create', '--yes', '-q', '-p', env, 'pip']
         else:
             cmd = [conda, 'create', '--yes', '-q', '-n', env, 'pip']
 
         ret = execcmd(cmd, user)
         if ret['retcode'] == 0:
-            comments.append('Virtual enviroment [%s] created' % env)
+            ans['comment'].append('Virtual enviroment [%s] created' % env)
             ans['changes'][env] = 'Virtual enviroment created'
         else:
             if ret['stderr'].startswith('Error: prefix already exists:'):
-                comments.append('Virtual enviroment [%s] already exists' % env)
+                ans['comment'].append('Virtual enviroment [%s] already exists' % env)
             else:
                 # Another error
                 ans['comment'] = ret['stderr']
                 ans['result'] = False
                 return ans
 
+    # Install packages
     if packages is not None:
         installation_ans = installed(packages, env, conda=conda, pip=pip, user=user)
         ans['result'] = ans['result'] and installation_ans['result']
-        comments.append('From list [%s]' % installation_ans['comment'])
+        ans['comment'].append('From list [%s]' % installation_ans['comment'])
         ans['changes'].update(installation_ans['changes'])
 
     if requirements is not None:
         installation_ans = installed(requirements, env, conda=conda, pip=pip, user=user)
         ans['result'] = ans['result'] and installation_ans['result']
-        comments.append('From file [%s]' % installation_ans['comment'])
+        ans['comment'].append('From file [%s]' % installation_ans['comment'])
         ans['changes'].update(installation_ans['changes'])
 
-    ans['comment'] = ' - '.join(comments)
+    ans['comment'] = ' - '.join(ans['comment'])
     return ans
 
 
@@ -113,24 +113,31 @@ def installed(name, env=None, conda=None, pip=None, user=None):
             else:
                 packages.append(line)
     else:
-        # Is not a file is a single package or list of packages
+        # Is not a file, is a single package or list of packages
         temp = name.split(',')
         for package in temp:
             packages.append(package.strip())
 
     # Install packages
-    installed = 0
-    failed = 0
+    pip_freeze = [pip, 'freeze']
+    ret = execcmd(pip_freeze, user)
+    freeze = ret['stdout'].lower()
+
     old = 0
-    for i, package in enumerate(packages):
-        ret = install(package, env=env, conda=conda, pip=pip, user=user)
-        if ret == 'OK':
-            ans['changes'][package] = 'installed'
-            installed = installed + 1
-        elif ret == 'OLD':
+    failed = 0
+    installed = 0
+    for package in packages:
+        if package in freeze:
+            ans['changes'][package] = 'already installed'
             old = old + 1
         else:
-            failed = failed + 1
+            ret = install(package, env=env, conda=conda, pip=pip, user=user)
+            if ret == 'OK':
+                ans['changes'][package] = 'installed'
+                installed = installed + 1
+            else:
+                ans['changes'][package] = 'error'
+                failed = failed + 1
 
     comment = '{0} packages installed, {1} already in installed, {2} failed'
     ans['comment'] = comment.format(installed, old, failed)
@@ -145,9 +152,11 @@ def install(package, env=None, conda=None, pip=None, user=None):
     """
     Helper function to install a single package from conda or defaulting to pip
 
+    Note: Does not check if package is already installed
+
     Returns
     -------
-        "OK", "OLD" OR "ERROR: message"
+        string: "OK", "OLD" OR "ERROR: message"
     """
     if conda is None:
         conda = 'conda'
@@ -163,35 +172,31 @@ def install(package, env=None, conda=None, pip=None, user=None):
 
     pip_base_cmd = [pip, 'install', '-q']
 
+    # If its a git repo install using pip
     if package.startswith('git'):
-        # If its a git repo install using pip
         cmd = pip_base_cmd + [package]
         ret = execcmd(cmd, user)
         if ret['retcode'] == 0:
             return 'OK'
         else:
             return 'ERROR: ' + ret['stderr']
+
+    # Install from conda or pip
+    cmd = conda_base_cmd + [package]
+    ret = execcmd(cmd, user)
+
+    if ret['retcode'] == 0:
+        return 'OK'
     else:
-        cmd = conda_base_cmd + [package]
-        ret = execcmd(cmd, user)
+        if 'Error: No packages found matching:' in ret['stderr']:
+            # Package not available through conda try pypi
+            cmd = pip_base_cmd + [package]
+            ret = execcmd(cmd, user)
 
-        if ret['retcode'] == 0:
-            if '# All requested packages already installed' in ret['stdout']:
-                return 'OLD'
-            else:
+            if ret['retcode'] == 0:
                 return 'OK'
-        else:
-            if 'Error: No packages found matching:' in ret['stderr']:
-                # Package not in conda try pypi
-                cmd = pip_base_cmd + [package]
-                ret = execcmd(cmd, user)
-
-                if ret['retcode'] == 0:
-                    return 'OK'
-                else:
-                    # Could not find using conda or pypi
-                    return 'ERROR: Package %s not found on conda or pypi' % package
             else:
-                # Another conda error
-                return 'ERROR: ' + ret['stderr']
-
+                return 'ERROR: Package %s not found on conda or pypi' % package
+        else:
+            # Another conda error
+            return 'ERROR: ' + ret['stderr']

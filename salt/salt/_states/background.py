@@ -1,7 +1,12 @@
-# -*- coding: utf-8 -*-
 import os
 
-def running(name, pid, stdout, stderr, cwd=None, force=False, user=None):
+def running(name, pid=None, stdout=None, stderr=None, cwd=None, writepid=True, force=False, user=None):
+    '''
+
+    writepid: False,
+        usefull when the process writes its own pid but still want to kill it everytime
+
+    '''
     ans = {}
     ans['name'] = name
     ans['changes'] = {}
@@ -22,14 +27,19 @@ def running(name, pid, stdout, stderr, cwd=None, force=False, user=None):
             ans['comment'] = 'Process is already running with pid: %s' % oldpid
             return ans
 
-    cmd = '{cmd} >> {stdout} 2>> {stderr} &'
-    cmd = cmd.format(cmd=name, stdout=stdout, stderr=stderr)
+    if stdout and stderr:
+        cmd = '{cmd} >> {stdout} 2>> {stderr} &'
+        cmd = cmd.format(cmd=name, stdout=stdout, stderr=stderr)
+    else:
+        cmd = '{cmd} &'.format(cmd=name)
+
     dic = __salt__['cmd.run_all'](cmd, cwd=cwd, runas=user)
     newpid = dic['pid'] + 1
 
-    # write pid filei
-    cmd = "echo {pid} > {pidfile}".format(pid=newpid, pidfile=pid)
-    __salt__['cmd.run_all'](cmd, runas=user)
+    if pid and writepid:
+        # write pid file
+        cmd = "echo {pid} > {pidfile}".format(pid=newpid, pidfile=pid)
+        __salt__['cmd.run_all'](cmd, runas=user)
 
     ans['comment'] = 'New background process running with pid {0}'.format(newpid)
     ans['changes']['new'] = 'New background process running with pid {0}'.format(newpid)
