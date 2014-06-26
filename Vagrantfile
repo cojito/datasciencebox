@@ -1,7 +1,6 @@
-
 Vagrant.configure("2") do |config|
-  config.vm.box = "precise64"
-  config.vm.box_url = "http://files.vagrantup.com/precise64.box"
+  config.vm.box = "trusty64"
+  config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
 
   config.vm.network "forwarded_port", guest: 8888, host: 8888
 
@@ -31,7 +30,7 @@ Vagrant.configure("2") do |config|
     aws.availability_zone = "us-east-1d"
 
     aws.instance_type = "m1.large"
-    aws.ami = "ami-59a4a230"  # ubuntu 12.04.3 LTS 64 bits
+    aws.ami = "ami-018c9568"  # ubuntu 14.04 LTS 64 bits
 
     aws.tags = {
       "Name" => "datasciencebox",
