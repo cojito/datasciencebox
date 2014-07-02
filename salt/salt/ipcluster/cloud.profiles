@@ -1,5 +1,0 @@
-base_ec2:
-  provider: ec2-private-ips
-  image: {{ pillar['ipcluster']['ami'] }}
-  size: {{ pillar['ipcluster']['size'] }}
-  ssh_username: {{ pillar['ipcluster']['ssh_user'] }}
