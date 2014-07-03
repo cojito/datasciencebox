@@ -1,0 +1,27 @@
+ec2-private-ips:
+  provider: ec2
+
+  # Configure which user to use to run the deploy script. This setting is
+  # dependent upon the AMI that is used to deploy. It is usually safer to
+  # configure this individually in a profile, than globally.
+  ssh_username: ubuntu
+
+  # Set up the location of the salt master
+  minion:
+    master: {{ grains['fqdn_ip4'][0] }}
+
+  # private_ips: The salt-master is also hosted with EC2
+  ssh_interface: private_ips
+
+  # Set the EC2 access credentials (see below)
+  id: {{ pillar['aws']['access_key'] }}
+  key: {{ pillar['aws']['secret_key'] }}
+
+  # Make sure this key is owned by root with permissions 0400.
+  private_key: /vagrant/ipcluster.pem
+  keyname: {{ pillar['ipcluster']['keyname'] }}
+  securitygroup: {{ pillar['ipcluster']['securitygroup'] }}
+
+  # Optionally configure default region
+  location: {{ pillar['ipcluster']['location'] }}
+  availability_zone: {{ pillar['ipcluster']['availability_zone'] }}

@@ -1,0 +1,7 @@
+ipython
+numpy
+scipy
+pandas
+scikit-learn
+matplotlib
+requests

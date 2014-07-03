@@ -18,13 +18,13 @@ Vagrant.configure("2") do |config|
     override.vm.box_url = "https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box"
 
     override.ssh.username = "ubuntu"
-    override.ssh.private_key_path = "~/.ssh/daniel_keypair.pem"
+    override.ssh.private_key_path = "~/.ssh/_keypair.pem"
 
     aws.security_groups = ["open"]
-    aws.keypair_name = "daniel_keypair"
+    aws.keypair_name = "_keypair"
 
-    aws.access_key_id = "AKIAI5J7ALYW3FFYYC3Q"
-    aws.secret_access_key = "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"
+    aws.access_key_id = ""
+    aws.secret_access_key = ""
 
     aws.region = "us-east-1"
     aws.availability_zone = "us-east-1d"
