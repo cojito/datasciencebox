@@ -5,3 +5,5 @@ pandas
 scikit-learn
 matplotlib
 requests
+gensim
+fuzzywuzzy
